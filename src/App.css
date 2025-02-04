@@ -1,0 +1,178 @@
+:root {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --accent-primary: #2c3e50;
+  --accent-hover: #34495e;
+  --border-color: #404040;
+  --button-shadow: rgba(0, 0, 0, 0.1);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+  color: white;
+}
+
+.App {
+  text-align: center;
+  padding: 20px;
+  background-color: #1e1e1e;
+  min-height: 100vh;
+  color: white;
+}
+
+.editor-layout {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.vertical-menu {
+  width: 200px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.top-controls {
+  background-color: var(--bg-secondary);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+
+.top-controls-content {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+h2 {
+  color: var(--text-primary);
+  margin: 0 0 10px 0;
+  font-size: 1.5em;
+}
+
+.button-groups-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.button-group {
+  display: inline-block;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #2d2d2d;
+}
+
+.button-group-title {
+  font-size: 0.9em;
+  margin-bottom: 8px;
+  text-align: left;
+  color: #ccc;
+}
+
+button {
+  display: block;
+  width: 100%;
+  margin: 5px 0;
+  padding: 8px;
+  background-color: #3d3d3d;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  color: white;
+}
+
+button:hover {
+  background-color: #4d4d4d;
+}
+
+.canvas-container {
+  margin: 0 auto;
+  display: block;
+  position: relative;
+  width: 1200px;
+  height: 880px;
+  border: 1px solid #555;
+  background: white;
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.drawing-tooltip {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.zone-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #2d2d2d;
+  padding: 20px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  z-index: 1000;
+  color: white;
+}
+
+.zone-dialog h3 {
+  margin: 0 0 15px 0;
+}
+
+.zone-button-attacker {
+  background: rgba(255, 68, 68, 0.8) !important;
+}
+
+.zone-button-attacker:hover {
+  background: linear-gradient(145deg, #d35400, #e67e22);
+}
+
+.zone-button-defender {
+  background: rgba(68, 255, 68, 0.8) !important;
+}
+
+.zone-button-defender:hover {
+  background: linear-gradient(145deg, #16a085, #1abc9c);
+}
