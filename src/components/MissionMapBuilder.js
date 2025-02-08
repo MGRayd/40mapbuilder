@@ -21,7 +21,7 @@ const MissionMapBuilder = () => {
   const [tempMarkers, setTempMarkers] = useState([]);
   const [tempLines, setTempLines] = useState([]);
   const [pendingPoints, setPendingPoints] = useState(null);
-  const [showCenterMarker, setShowCenterMarker] = useState(false);
+  const [showCenterMarker, setShowCenterMarker] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [customZoneColor, setCustomZoneColor] = useState('#e67e22');
   const [customZoneOpacity, setCustomZoneOpacity] = useState(0.6);
