@@ -83,8 +83,8 @@ h2 {
 
 .button-group {
   display: inline-block;
-  margin: 10px;
-  padding: 10px;
+  margin: 5px;
+  padding: 6px;
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: #2d2d2d;
@@ -92,7 +92,7 @@ h2 {
 
 .button-group-title {
   font-size: 0.9em;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   text-align: left;
   color: #ccc;
 }
@@ -100,8 +100,8 @@ h2 {
 button {
   display: block;
   width: 100%;
-  margin: 5px 0;
-  padding: 8px;
+  margin: 3px 0;
+  padding: 4px 8px;
   background-color: #3d3d3d;
   border: 1px solid #555;
   border-radius: 4px;
@@ -121,7 +121,6 @@ button:hover {
   width: 1200px;
   height: 880px;
   border: 1px solid #555;
-  background: white;
 }
 
 canvas {
@@ -175,4 +174,20 @@ canvas {
 
 .zone-button-defender:hover {
   background: linear-gradient(145deg, #16a085, #1abc9c);
+}
+
+.zone-button-danger {
+  padding: 10px 20px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+  background: linear-gradient(145deg, #e67e22, #d35400);
+  transition: all 0.3s ease;
+}
+
+.zone-button-danger:hover {
+  background: linear-gradient(145deg, #f39c12, #e67e22);
 }
