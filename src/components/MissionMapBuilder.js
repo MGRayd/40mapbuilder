@@ -44,74 +44,32 @@ const MissionMapBuilder = () => {
   }, []);
 
   useEffect(() => {
-    if (!canvas || !isDrawing) return;
-
-    const handleCanvasClick = (options) => {
-      if (!isDrawing) return;
-
-      const pointer = canvas.getPointer(options.e);
-      const x = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
-      const y = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
-
-      // Add point marker
-      const marker = new fabric.Circle({
-        left: x,
-        top: y,
-        radius: 5,
-        fill: 'white',
-        stroke: '#666666',
-        strokeWidth: 2,
-        selectable: false,
-        evented: false
-      });
-
-      canvas.add(marker);
-      canvas.renderAll();
-      
-      setTempMarkers(prev => [...prev, marker]);
-      
-      const newPoints = [...points, { x, y }];
-
-      if (points.length > 0) {
-        const line = new fabric.Line(
-          [points[points.length - 1].x, points[points.length - 1].y, x, y],
-          { 
-            stroke: '#666666',
-            strokeWidth: 2,
-            selectable: false,
-            evented: false
-          }
-        );
-        canvas.add(line);
-        canvas.renderAll();
-        setTempLines(prev => [...prev, line]);
-      }
-
-      setPoints(newPoints);
-
-      // If we have 3 or more points, show the zone type dialog
-      if (newPoints.length >= 3) {
-        setPendingPoints(newPoints);
-        setShowZoneDialog(true);
-      }
-    };
-
-    canvas.on('mouse:down', handleCanvasClick);
-    
-    return () => {
-      canvas.off('mouse:down', handleCanvasClick);
-    };
-  }, [canvas, isDrawing, points]);
-
-  useEffect(() => {
     if (!canvasRef.current) return;
+
+    // Set global control properties for all objects
+    fabric.Object.prototype.set({
+      cornerColor: '#ff3b30',
+      cornerStrokeColor: '#ffffff',
+      cornerSize: 14,
+      cornerStyle: 'circle',
+      borderColor: '#ff3b30',
+      transparentCorners: false,
+      cornerDashArray: null,
+      borderDashArray: null,
+      borderScaleFactor: 2,
+      padding: 10
+    });
 
     const newCanvas = new fabric.Canvas(canvasRef.current, {
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
       backgroundColor: '#d9d8d1',
       preserveObjectStacking: true,
-      renderOnAddRemove: true
+      renderOnAddRemove: true,
+      selection: true,
+      selectionColor: 'rgba(100, 100, 255, 0.15)',
+      selectionBorderColor: 'rgba(100, 100, 255, 0.45)',
+      selectionLineWidth: 1
     });
 
     // Draw grid
@@ -198,20 +156,48 @@ const MissionMapBuilder = () => {
 
     // Add selection event listeners
     newCanvas.on('selection:created', (options) => {
-      setSelectedObject(options.selected[0]);
+      setSelectedObject(options.selected ? options.selected[0] : null);
     });
 
     newCanvas.on('selection:updated', (options) => {
-      setSelectedObject(options.selected[0]);
+      setSelectedObject(options.selected ? options.selected[0] : null);
     });
 
     newCanvas.on('selection:cleared', () => {
       setSelectedObject(null);
     });
 
+    // Add keyboard event listeners for multi-selection
+    const handleKeyDown = (e) => {
+      if (!newCanvas) return;
+      
+      if (e.shiftKey) {
+        newCanvas.selection = true;
+        newCanvas.discardActiveObject();
+        newCanvas.renderAll();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (!newCanvas) return;
+      
+      if (!e.shiftKey) {
+        const activeSelection = newCanvas.getActiveObject();
+        if (activeSelection && activeSelection.type === 'activeSelection') {
+          newCanvas.discardActiveObject();
+        }
+        newCanvas.renderAll();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
     setCanvas(newCanvas);
 
     return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       newCanvas.dispose();
     };
   }, []);
@@ -221,6 +207,78 @@ const MissionMapBuilder = () => {
     centerMarkerRef.current.set('visible', showCenterMarker);
     canvas.renderAll();
   }, [canvas, showCenterMarker]);
+
+  useEffect(() => {
+    if (!canvas || !isDrawing) return;
+
+    const handleCanvasClick = (options) => {
+      if (!isDrawing) return;
+
+      const pointer = canvas.getPointer(options.e);
+      const x = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
+      const y = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
+
+      // Add point marker with enhanced visibility
+      const marker = new fabric.Circle({
+        left: x,
+        top: y,
+        radius: 8,
+        fill: '#00a8ff',
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        selectable: false,
+        evented: false,
+        shadow: new fabric.Shadow({
+          color: 'rgba(0,0,0,0.3)',
+          blur: 4,
+          offsetX: 2,
+          offsetY: 2
+        })
+      });
+
+      canvas.add(marker);
+      canvas.renderAll();
+      
+      setTempMarkers(prev => [...prev, marker]);
+      
+      const newPoints = [...points, { x, y }];
+
+      if (points.length > 0) {
+        const line = new fabric.Line(
+          [points[points.length - 1].x, points[points.length - 1].y, x, y],
+          { 
+            stroke: '#00a8ff',
+            strokeWidth: 2,
+            selectable: false,
+            evented: false,
+            shadow: new fabric.Shadow({
+              color: 'rgba(0,0,0,0.2)',
+              blur: 3,
+              offsetX: 1,
+              offsetY: 1
+            })
+          }
+        );
+        canvas.add(line);
+        canvas.renderAll();
+        setTempLines(prev => [...prev, line]);
+      }
+
+      setPoints(newPoints);
+
+      // If we have 3 or more points, show the zone type dialog
+      if (newPoints.length >= 3) {
+        setPendingPoints(newPoints);
+        setShowZoneDialog(true);
+      }
+    };
+
+    canvas.on('mouse:down', handleCanvasClick);
+    
+    return () => {
+      canvas.off('mouse:down', handleCanvasClick);
+    };
+  }, [canvas, isDrawing, points]);
 
   const addTextToZone = () => {
     if (!canvas || !selectedObject) return;
@@ -498,19 +556,28 @@ const MissionMapBuilder = () => {
 
   const addObjectiveMarker = () => {
     if (!canvas) return;
-    
-    fabric.Image.fromURL(objectiveIcon, (img) => {
-      const scale = 0.5;
+
+    fabric.Image.fromURL(objectiveIcon, function(img) {
       img.set({
         left: CANVAS_WIDTH / 2,
         top: CANVAS_HEIGHT / 2,
-        originX: 'center',
-        originY: 'center',
         name: 'objective_marker',
-        scaleX: scale,
-        scaleY: scale
+        cornerColor: '#ff3b30',
+        cornerStrokeColor: '#ffffff',
+        cornerSize: 14,
+        cornerStyle: 'circle',
+        borderColor: '#ff3b30',
+        transparentCorners: false,
+        cornerDashArray: null,
+        borderDashArray: null,
+        borderScaleFactor: 2,
+        padding: 10
       });
-      
+
+      // Scale the image
+      const scaleFactor = GRID_SIZE * 2 / Math.max(img.width, img.height);
+      img.scale(scaleFactor);
+
       canvas.add(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
@@ -764,11 +831,13 @@ const MissionMapBuilder = () => {
       
       <div className="button-groups-container" style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
         <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Deployment</div>
-          <button onClick={() => addDeploymentZone("attacker")} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Attacker Zone</button>
-          <button onClick={() => addDeploymentZone("defender")} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Defender Zone</button>
-          <button onClick={addObjectiveMarker} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Objective Marker</button>
-          <button onClick={addStrikeForceMarker} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Strike Force Marker</button>
+          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Map Editor</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+            <button onClick={() => addDeploymentZone("attacker")} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Attacker Zone</button>
+            <button onClick={() => addDeploymentZone("defender")} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Defender Zone</button>
+            <button onClick={addObjectiveMarker} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Objective</button>
+            <button onClick={addStrikeForceMarker} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Strike Force</button>
+          </div>
           <button onClick={addCustomZone} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Add Custom Zone</button>
           <button 
             onClick={startDrawingZone} 
@@ -804,17 +873,13 @@ const MissionMapBuilder = () => {
         </div>
 
         <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Edit</div>
-          <button 
-            onClick={() => setShowCenterMarker(!showCenterMarker)} 
-            style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}
-          >
-            {showCenterMarker ? 'Hide Center' : 'Show Center'}
-          </button>
-          <button onClick={groupSelected} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Group</button>
-          <button onClick={ungroupSelected} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Ungroup</button>
-          <button onClick={duplicateSelected} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Duplicate</button>
-          <button onClick={deleteSelected} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Delete</button>
+          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Options</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+            <button onClick={groupSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Group</button>
+            <button onClick={ungroupSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Ungroup</button>
+            <button onClick={duplicateSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Duplicate</button>
+            <button onClick={deleteSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
+          </div>
           <button 
             onClick={addTextToZone}
             disabled={!selectedObject || !selectedObject.name?.includes('zone') || (selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))}
@@ -850,7 +915,13 @@ const MissionMapBuilder = () => {
         </div>
 
         <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Save/Export</div>
+          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Settings</div>
+          <button 
+            onClick={() => setShowCenterMarker(!showCenterMarker)} 
+            style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            {showCenterMarker ? 'Hide Center' : 'Show Center'}
+          </button>
           <button onClick={saveMap} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Save</button>
           <button onClick={loadMap} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Load</button>
           <button onClick={exportAsPNG} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Export</button>
