@@ -40,6 +40,9 @@ const MissionMapBuilder = () => {
   const [customZoneOpacity, setCustomZoneOpacity] = useState(0.6);
   const [showImageSettings, setShowImageSettings] = useState(false);
   const [imageOpacity, setImageOpacity] = useState(1);
+  const [showDrawnZoneDialog, setShowDrawnZoneDialog] = useState(false);
+  const [drawnZonePoints, setDrawnZonePoints] = useState(null);
+  const [showDrawnZoneColorPicker, setShowDrawnZoneColorPicker] = useState(false);
 
   // Create ruler marks for horizontal and vertical rulers
   const horizontalRulerMarks = useMemo(() => {
@@ -230,62 +233,47 @@ const MissionMapBuilder = () => {
       if (!isDrawing) return;
 
       const pointer = canvas.getPointer(options.e);
-      const x = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
-      const y = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
+      const clickPoint = { x: pointer.x, y: pointer.y };
 
-      // Add point marker with enhanced visibility
+      // Add the point to our points array
+      const newPoints = [...points, clickPoint];
+      setPoints(newPoints);
+
+      // Add a visual marker for the point
       const marker = new fabric.Circle({
-        left: x,
-        top: y,
-        radius: 8,
-        fill: '#00a8ff',
-        stroke: '#ffffff',
-        strokeWidth: 2,
+        left: clickPoint.x - 4,
+        top: clickPoint.y - 4,
+        radius: 4,
+        fill: 'red',
         selectable: false,
-        evented: false,
-        shadow: new fabric.Shadow({
-          color: 'rgba(0,0,0,0.3)',
-          blur: 4,
-          offsetX: 2,
-          offsetY: 2
-        })
+        evented: false
       });
 
       canvas.add(marker);
-      canvas.renderAll();
-      
-      setTempMarkers(prev => [...prev, marker]);
-      
-      const newPoints = [...points, { x, y }];
+      setTempMarkers([...tempMarkers, marker]);
 
-      if (points.length > 0) {
+      // If we have more than one point, draw a line from the previous point
+      if (newPoints.length > 1) {
+        const prevPoint = newPoints[newPoints.length - 2];
         const line = new fabric.Line(
-          [points[points.length - 1].x, points[points.length - 1].y, x, y],
-          { 
-            stroke: '#00a8ff',
-            strokeWidth: 2,
+          [prevPoint.x, prevPoint.y, clickPoint.x, clickPoint.y],
+          {
+            stroke: 'red',
             selectable: false,
-            evented: false,
-            shadow: new fabric.Shadow({
-              color: 'rgba(0,0,0,0.2)',
-              blur: 3,
-              offsetX: 1,
-              offsetY: 1
-            })
+            evented: false
           }
         );
         canvas.add(line);
-        canvas.renderAll();
-        setTempLines(prev => [...prev, line]);
+        setTempLines([...tempLines, line]);
       }
-
-      setPoints(newPoints);
 
       // If we have 3 or more points, show the zone type dialog
       if (newPoints.length >= 3) {
-        setPendingPoints(newPoints);
-        setShowZoneDialog(true);
+        setDrawnZonePoints([...newPoints]);
+        setShowDrawnZoneDialog(true);
       }
+
+      canvas.renderAll();
     };
 
     canvas.on('mouse:down', handleCanvasClick);
@@ -294,6 +282,21 @@ const MissionMapBuilder = () => {
       canvas.off('mouse:down', handleCanvasClick);
     };
   }, [canvas, isDrawing, points]);
+
+  const finishDrawingZone = (pointsToUse = points) => {
+    setIsDrawing(false);
+    setPoints([]);
+    setPendingPoints(null);
+    canvas.selection = true;
+    canvas.defaultCursor = 'default';
+    canvas.hoverCursor = 'move';
+    
+    // Clear temporary markers and lines
+    tempMarkers.forEach(marker => canvas.remove(marker));
+    tempLines.forEach(line => canvas.remove(line));
+    setTempMarkers([]);
+    setTempLines([]);
+  };
 
   const addTextToZone = () => {
     if (!canvas || !selectedObject) return;
@@ -371,37 +374,54 @@ const MissionMapBuilder = () => {
     if (!canvas) return;
     setIsDrawing(true);
     setPoints([]);
-    setTempMarkers([]);
-    setTempLines([]);
-    setShowZoneDialog(false);
+    setPendingPoints(null);
     canvas.selection = false;
     canvas.defaultCursor = 'crosshair';
     canvas.hoverCursor = 'crosshair';
-    canvas.renderAll();
   };
 
-  const createZone = (type) => {
-    if (!canvas || !pendingPoints || pendingPoints.length < 3) return;
-    
-    const polygonPoints = pendingPoints.flatMap(p => [p.x, p.y]);
+  const addCustomZone = () => {
+    setShowDrawnZoneColorPicker(true);
+    createZonePreview();
+  };
 
-    const polygon = new fabric.Polygon(pendingPoints, {
-      fill: type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
-           type === "defender" ? "rgba(72, 94, 82, 0.8)" :
-           "rgba(230, 126, 34, 0.3)", // Orange for danger zone
+  const createZonePreview = () => {
+    if (!canvas) return;
+    
+    const zoneSize = 200;
+    const canvasCenter = canvas.getCenter();
+    
+    const points = [
+      { x: canvasCenter.left - zoneSize/2, y: canvasCenter.top - zoneSize/2 },
+      { x: canvasCenter.left + zoneSize/2, y: canvasCenter.top - zoneSize/2 },
+      { x: canvasCenter.left + zoneSize/2, y: canvasCenter.top + zoneSize/2 },
+      { x: canvasCenter.left - zoneSize/2, y: canvasCenter.top + zoneSize/2 }
+    ];
+
+    setDrawnZonePoints(points);
+  };
+
+  const handleCustomZoneColor = (color) => {
+    setCustomZoneColor(color);
+  };
+
+  const handlePlaceCustomZone = () => {
+    if (!drawnZonePoints) return;
+    
+    const polygon = new fabric.Polygon(drawnZonePoints, {
+      fill: `rgba(${hexToRgb(customZoneColor).r}, ${hexToRgb(customZoneColor).g}, ${hexToRgb(customZoneColor).b}, ${customZoneOpacity})`,
       stroke: '',
       strokeWidth: 0,
       selectable: true,
       hasControls: true,
       hasBorders: true,
-      name: `${type}_zone`,
+      name: 'custom_zone',
       opacity: 1,
       evented: true
     });
 
     canvas.add(polygon);
     canvas.setActiveObject(polygon);
-    canvas.renderAll();
     
     // Move all measurement lines and objectives to front
     canvas.getObjects().forEach(obj => {
@@ -413,48 +433,9 @@ const MissionMapBuilder = () => {
       }
     });
 
-    // Reset drawing state and cursor
-    setIsDrawing(false);
-    setPoints([]);
-    setPendingPoints([]);
-    canvas.selection = true;
-    canvas.defaultCursor = 'default';
-    canvas.hoverCursor = 'move';
-    
-    // Clear temporary markers and lines
-    tempMarkers.forEach(marker => canvas.remove(marker));
-    tempLines.forEach(line => canvas.remove(line));
-    setTempMarkers([]);
-    setTempLines([]);
     canvas.renderAll();
-  };
-
-  const addDeploymentZone = (type) => {
-    const width = 12 * INCH_TO_PIXEL_RATIO; // 12 inches
-    const height = 6 * INCH_TO_PIXEL_RATIO; // 6 inches
-    
-    const rect = new fabric.Rect({
-      left: CANVAS_WIDTH / 2,
-      top: CANVAS_HEIGHT / 2,
-      width: width,
-      height: height,
-      fill: type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
-            type === "defender" ? "rgba(72, 94, 82, 0.8)" :
-            "rgba(230, 126, 34, 0.3)", // Orange for danger zone
-      stroke: '',
-      strokeWidth: 0,
-      originX: 'center',
-      originY: 'center',
-      name: `${type}_zone`
-    });
-
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
-    canvas.renderAll();
-  };
-
-  const addCustomZone = () => {
-    setShowZoneDialog(true);
+    setShowDrawnZoneColorPicker(false);
+    setDrawnZonePoints(null);
   };
 
   const updateSelectedImageProperties = () => {
@@ -778,12 +759,66 @@ const MissionMapBuilder = () => {
   };
 
   const handleZoneTypeSelection = (type) => {
+    createZone(type);
+    setShowZoneDialog(false);
+  };
+
+  const handleDrawnZoneType = (type) => {
     if (type === 'custom') {
-      setShowZoneDialog(true);
+      setShowDrawnZoneColorPicker(true);
     } else {
-      createZone(type);
+      finishDrawingZone(points);
+      createDrawnZone(type);
+      setShowDrawnZoneDialog(false);
     }
-    setShowZoneDialog(false);  // Explicitly close the zone dialog
+  };
+
+  const createDrawnZone = (type, customColor = null) => {
+    if (!canvas || !drawnZonePoints || drawnZonePoints.length < 3) return;
+
+    const zoneColor = type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
+                     type === "defender" ? "rgba(72, 94, 82, 0.8)" :
+                     `rgba(${hexToRgb(customColor || customZoneColor).r}, ${hexToRgb(customColor || customZoneColor).g}, ${hexToRgb(customColor || customZoneColor).b}, ${customZoneOpacity})`;
+
+    const polygon = new fabric.Polygon(drawnZonePoints, {
+      fill: zoneColor,
+      stroke: '',
+      strokeWidth: 0,
+      selectable: true,
+      hasControls: true,
+      hasBorders: true,
+      name: `${type}_zone`,
+      opacity: 1,
+      evented: true
+    });
+
+    canvas.add(polygon);
+    canvas.setActiveObject(polygon);
+    
+    // Move all measurement lines and objectives to front
+    canvas.getObjects().forEach(obj => {
+      if (obj.name && (
+          obj.name.includes('measurement') || 
+          obj.name.includes('objective') || 
+          obj.name === 'center_marker')) {
+        obj.bringToFront();
+      }
+    });
+
+    canvas.renderAll();
+    setDrawnZonePoints(null);
+    setShowDrawnZoneColorPicker(false);
+  };
+
+  const handleDrawnZoneColor = (color) => {
+    setCustomZoneColor(color);
+  };
+
+  const handlePlaceDrawnZone = () => {
+    finishDrawingZone(points);
+    createDrawnZone('custom', customZoneColor);
+    setShowDrawnZoneDialog(false);
+    setShowDrawnZoneColorPicker(false);
   };
 
   useEffect(() => {
@@ -791,6 +826,117 @@ const MissionMapBuilder = () => {
       updateSelectedImageProperties();
     }
   }, [imageOpacity]);
+
+  useEffect(() => {
+    if (!canvas || !drawnZonePoints || !showDrawnZoneColorPicker) return;
+
+    // Remove any existing preview
+    const existingPreview = canvas.getObjects().find(obj => obj.name === 'zone_preview');
+    if (existingPreview) {
+      canvas.remove(existingPreview);
+    }
+
+    // Create preview polygon
+    const previewZone = new fabric.Polygon(drawnZonePoints, {
+      fill: `rgba(${hexToRgb(customZoneColor).r}, ${hexToRgb(customZoneColor).g}, ${hexToRgb(customZoneColor).b}, ${customZoneOpacity})`,
+      stroke: '',
+      strokeWidth: 0,
+      selectable: false,
+      hasControls: false,
+      hasBorders: false,
+      name: 'zone_preview',
+      opacity: 0.5,
+      evented: false
+    });
+
+    canvas.add(previewZone);
+    canvas.renderAll();
+
+    // Cleanup function
+    return () => {
+      const previewToRemove = canvas.getObjects().find(obj => obj.name === 'zone_preview');
+      if (previewToRemove) {
+        canvas.remove(previewToRemove);
+        canvas.renderAll();
+      }
+    };
+  }, [canvas, drawnZonePoints, customZoneColor, showDrawnZoneColorPicker, customZoneOpacity]);
+
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+
+  const createZone = (type) => {
+    if (!canvas) return;
+    
+    const zoneSize = 200; // Default size for placed zones
+    const canvasCenter = canvas.getCenter();
+    
+    const points = [
+      { x: canvasCenter.left - zoneSize/2, y: canvasCenter.top - zoneSize/2 },
+      { x: canvasCenter.left + zoneSize/2, y: canvasCenter.top - zoneSize/2 },
+      { x: canvasCenter.left + zoneSize/2, y: canvasCenter.top + zoneSize/2 },
+      { x: canvasCenter.left - zoneSize/2, y: canvasCenter.top + zoneSize/2 }
+    ];
+
+    const polygon = new fabric.Polygon(points, {
+      fill: type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
+           type === "defender" ? "rgba(72, 94, 82, 0.8)" :
+           `rgba(${hexToRgb(customZoneColor).r}, ${hexToRgb(customZoneColor).g}, ${hexToRgb(customZoneColor).b}, ${customZoneOpacity})`,
+      stroke: '',
+      strokeWidth: 0,
+      selectable: true,
+      hasControls: true,
+      hasBorders: true,
+      name: `${type}_zone`,
+      opacity: 1,
+      evented: true
+    });
+
+    canvas.add(polygon);
+    canvas.setActiveObject(polygon);
+    
+    // Move all measurement lines and objectives to front
+    canvas.getObjects().forEach(obj => {
+      if (obj.name && (
+          obj.name.includes('measurement') || 
+          obj.name.includes('objective') || 
+          obj.name === 'center_marker')) {
+        obj.bringToFront();
+      }
+    });
+
+    canvas.renderAll();
+  };
+
+  const addDeploymentZone = (type) => {
+    const width = 12 * INCH_TO_PIXEL_RATIO; // 12 inches
+    const height = 6 * INCH_TO_PIXEL_RATIO; // 6 inches
+    
+    const rect = new fabric.Rect({
+      left: CANVAS_WIDTH / 2,
+      top: CANVAS_HEIGHT / 2,
+      width: width,
+      height: height,
+      fill: type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
+            type === "defender" ? "rgba(72, 94, 82, 0.8)" :
+            "rgba(230, 126, 34, 0.3)", // Orange for danger zone
+      stroke: '',
+      strokeWidth: 0,
+      originX: 'center',
+      originY: 'center',
+      name: `${type}_zone`
+    });
+
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.renderAll();
+  };
 
   return (
     <div>
@@ -968,36 +1114,43 @@ const MissionMapBuilder = () => {
           </div>
         )}
 
-        {showZoneDialog && (
-          <div className="zone-dialog" style={{
-            position: 'fixed',
-            top: '40%',
-            right: '8px',
-            transform: 'translateY(-50%)',
+        {showDrawnZoneColorPicker && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
             backgroundColor: '#2c2c2c',
             padding: '10px',
             borderRadius: '6px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
             zIndex: 1000,
             color: 'white',
             width: '130px'
           }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Zone Type</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <button onClick={() => handleZoneTypeSelection("attacker")} style={{ padding: '5px', backgroundColor: '#e74c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Attacker</button>
-              <button onClick={() => handleZoneTypeSelection("defender")} style={{ padding: '5px', backgroundColor: '#1abc9c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Defender</button>
-              <button onClick={() => handleZoneTypeSelection("custom")} style={{ padding: '5px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Custom</button>
-              <button onClick={() => {
-                setPendingPoints(null);
-                setIsDrawing(false);
-                setShowZoneDialog(false);
-                tempMarkers.forEach(marker => canvas.remove(marker));
-                tempLines.forEach(line => canvas.remove(line));
-                setTempMarkers([]);
-                setTempLines([]);
-                setPoints([]);
-              }} style={{ padding: '5px', backgroundColor: '#7f8c8d', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Cancel</button>
+            <div style={{ marginBottom: '10px' }}>
+              <label>Select Color:</label>
+              <input
+                type="color"
+                value={customZoneColor}
+                onChange={(e) => handleDrawnZoneColor(e.target.value)}
+                style={{ width: '100%', marginTop: '5px' }}
+              />
             </div>
+            <button
+              onClick={handlePlaceCustomZone}
+              style={{
+                width: '100%',
+                padding: '5px',
+                backgroundColor: '#4CAF50',
+                border: 'none',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Place Zone
+            </button>
           </div>
         )}
       </div>
@@ -1095,7 +1248,7 @@ const MissionMapBuilder = () => {
 
         {isDrawing && (
           <div className="drawing-tooltip">
-            Drawing mode: Click to place points, click near the start point to finish
+            Drawing mode: Click to place points. Need 3+ points to finish.
           </div>
         )}
       </div>
