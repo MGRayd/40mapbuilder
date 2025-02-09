@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/40mapbuilder/static/css/main.5ee816b9.css",
+    "main.js": "/40mapbuilder/static/js/main.a7873b0c.js",
+    "static/media/Objective.svg": "/40mapbuilder/static/media/Objective.6031dfcb2bbf9490022aeb44af77e714.svg",
+    "static/media/StrikeObj.svg": "/40mapbuilder/static/media/StrikeObj.aa87f6e97a3e2cdb46e594429b236ffa.svg",
+    "static/media/Attacker.svg": "/40mapbuilder/static/media/Attacker.317f42f6942d84551ccdac9e728cd07c.svg",
+    "static/media/Defender.svg": "/40mapbuilder/static/media/Defender.a55c2acebed75ebe2fa0adc51e3c25ef.svg",
+    "index.html": "/40mapbuilder/index.html",
+    "main.5ee816b9.css.map": "/40mapbuilder/static/css/main.5ee816b9.css.map",
+    "main.a7873b0c.js.map": "/40mapbuilder/static/js/main.a7873b0c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.5ee816b9.css",
+    "static/js/main.a7873b0c.js"
+  ]
+}
