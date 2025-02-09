@@ -43,6 +43,8 @@ const MissionMapBuilder = () => {
   const [showDrawnZoneDialog, setShowDrawnZoneDialog] = useState(false);
   const [drawnZonePoints, setDrawnZonePoints] = useState(null);
   const [showDrawnZoneColorPicker, setShowDrawnZoneColorPicker] = useState(false);
+  const [showCustomZoneColorPicker, setShowCustomZoneColorPicker] = useState(false);
+  const [rectangleZonePreview, setRectangleZonePreview] = useState(null);
 
   // Create ruler marks for horizontal and vertical rulers
   const horizontalRulerMarks = useMemo(() => {
@@ -381,11 +383,11 @@ const MissionMapBuilder = () => {
   };
 
   const addCustomZone = () => {
-    setShowDrawnZoneColorPicker(true);
-    createZonePreview();
+    setShowCustomZoneColorPicker(true);
+    createRectangleZonePreview();
   };
 
-  const createZonePreview = () => {
+  const createRectangleZonePreview = () => {
     if (!canvas) return;
     
     const zoneSize = 200;
@@ -398,7 +400,7 @@ const MissionMapBuilder = () => {
       { x: canvasCenter.left - zoneSize/2, y: canvasCenter.top + zoneSize/2 }
     ];
 
-    setDrawnZonePoints(points);
+    setRectangleZonePreview(points);
   };
 
   const handleCustomZoneColor = (color) => {
@@ -406,9 +408,9 @@ const MissionMapBuilder = () => {
   };
 
   const handlePlaceCustomZone = () => {
-    if (!drawnZonePoints) return;
+    if (!rectangleZonePreview) return;
     
-    const polygon = new fabric.Polygon(drawnZonePoints, {
+    const polygon = new fabric.Polygon(rectangleZonePreview, {
       fill: `rgba(${hexToRgb(customZoneColor).r}, ${hexToRgb(customZoneColor).g}, ${hexToRgb(customZoneColor).b}, ${customZoneOpacity})`,
       stroke: '',
       strokeWidth: 0,
@@ -434,8 +436,8 @@ const MissionMapBuilder = () => {
     });
 
     canvas.renderAll();
-    setShowDrawnZoneColorPicker(false);
-    setDrawnZonePoints(null);
+    setShowCustomZoneColorPicker(false);
+    setRectangleZonePreview(null);
   };
 
   const updateSelectedImageProperties = () => {
@@ -862,6 +864,41 @@ const MissionMapBuilder = () => {
     };
   }, [canvas, drawnZonePoints, customZoneColor, showDrawnZoneColorPicker, customZoneOpacity]);
 
+  useEffect(() => {
+    if (!canvas || !rectangleZonePreview || !showCustomZoneColorPicker) return;
+
+    // Remove any existing preview
+    const existingPreview = canvas.getObjects().find(obj => obj.name === 'rectangle_preview');
+    if (existingPreview) {
+      canvas.remove(existingPreview);
+    }
+
+    // Create preview polygon
+    const previewZone = new fabric.Polygon(rectangleZonePreview, {
+      fill: `rgba(${hexToRgb(customZoneColor).r}, ${hexToRgb(customZoneColor).g}, ${hexToRgb(customZoneColor).b}, ${customZoneOpacity})`,
+      stroke: '',
+      strokeWidth: 0,
+      selectable: false,
+      hasControls: false,
+      hasBorders: false,
+      name: 'rectangle_preview',
+      opacity: 0.5,
+      evented: false
+    });
+
+    canvas.add(previewZone);
+    canvas.renderAll();
+
+    // Cleanup function
+    return () => {
+      const previewToRemove = canvas.getObjects().find(obj => obj.name === 'rectangle_preview');
+      if (previewToRemove) {
+        canvas.remove(previewToRemove);
+        canvas.renderAll();
+      }
+    };
+  }, [canvas, rectangleZonePreview, showCustomZoneColorPicker, customZoneColor, customZoneOpacity]);
+
   const hexToRgb = (hex) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
@@ -1114,7 +1151,7 @@ const MissionMapBuilder = () => {
           </div>
         )}
 
-        {showDrawnZoneColorPicker && (
+        {showCustomZoneColorPicker && (
           <div style={{
             position: 'absolute',
             top: '50%',
@@ -1133,7 +1170,7 @@ const MissionMapBuilder = () => {
               <input
                 type="color"
                 value={customZoneColor}
-                onChange={(e) => handleDrawnZoneColor(e.target.value)}
+                onChange={(e) => setCustomZoneColor(e.target.value)}
                 style={{ width: '100%', marginTop: '5px' }}
               />
             </div>
@@ -1151,6 +1188,105 @@ const MissionMapBuilder = () => {
             >
               Place Zone
             </button>
+          </div>
+        )}
+
+        {showDrawnZoneDialog && (
+          <div style={{
+            position: 'fixed',
+            top: '40%',
+            right: '8px',
+            transform: 'translateY(-50%)',
+            backgroundColor: '#2c2c2c',
+            padding: '10px',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+            zIndex: 1000,
+            color: 'white',
+            width: '130px'
+          }}>
+            {!showDrawnZoneColorPicker ? (
+              <>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Zone Type</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <button onClick={() => handleDrawnZoneType("attacker")} 
+                    style={{ padding: '5px', backgroundColor: '#e74c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    Attacker
+                  </button>
+                  <button onClick={() => handleDrawnZoneType("defender")} 
+                    style={{ padding: '5px', backgroundColor: '#1abc9c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    Defender
+                  </button>
+                  <button onClick={() => handleDrawnZoneType("custom")} 
+                    style={{ padding: '5px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    Custom
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowDrawnZoneDialog(false);
+                      setDrawnZonePoints(null);
+                    }}
+                    style={{ padding: '5px', backgroundColor: '#7f8c8d', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Custom Zone Color</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <input 
+                    type="color" 
+                    value={customZoneColor}
+                    onChange={(e) => handleDrawnZoneColor(e.target.value)}
+                    style={{ width: '100%', height: '30px' }}
+                  />
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.1"
+                    value={customZoneOpacity}
+                    onChange={(e) => setCustomZoneOpacity(parseFloat(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <span style={{ fontSize: '12px', textAlign: 'center' }}>Opacity: {customZoneOpacity}</span>
+                  <button 
+                    onClick={handlePlaceDrawnZone}
+                    style={{ 
+                      padding: '5px', 
+                      backgroundColor: '#27ae60', 
+                      border: 'none', 
+                      color: 'white', 
+                      borderRadius: '4px', 
+                      cursor: 'pointer', 
+                      fontSize: '12px',
+                      marginTop: '5px'
+                    }}
+                  >
+                    Place Zone
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowDrawnZoneColorPicker(false);
+                      setShowDrawnZoneDialog(false);
+                      setDrawnZonePoints(null);
+                    }}
+                    style={{ 
+                      padding: '5px', 
+                      backgroundColor: '#7f8c8d', 
+                      border: 'none', 
+                      color: 'white', 
+                      borderRadius: '4px', 
+                      cursor: 'pointer', 
+                      fontSize: '12px' 
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -1248,7 +1384,7 @@ const MissionMapBuilder = () => {
 
         {isDrawing && (
           <div className="drawing-tooltip">
-            Drawing mode: Click to place points. Need 3+ points to finish.
+            Drawing mode: Click to place points. Need 3+ points.
           </div>
         )}
       </div>
