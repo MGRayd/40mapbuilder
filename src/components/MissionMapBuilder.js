@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { fabric } from "fabric";
 import objectiveIcon from '../assets/Objective.svg';
 import strikeObjectiveIcon from '../assets/StrikeObj.svg';
-import { ChromePicker } from 'react-color';
+import attackerIcon from '../assets/Attacker.svg';
+import defenderIcon from '../assets/Defender.svg';
 
 const INCH_TO_PIXEL_RATIO = 20;
 const CANVAS_WIDTH = 60 * INCH_TO_PIXEL_RATIO;
@@ -22,9 +23,10 @@ const MissionMapBuilder = () => {
   const [tempLines, setTempLines] = useState([]);
   const [pendingPoints, setPendingPoints] = useState(null);
   const [showCenterMarker, setShowCenterMarker] = useState(true);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [customZoneColor, setCustomZoneColor] = useState('#e67e22');
   const [customZoneOpacity, setCustomZoneOpacity] = useState(0.6);
+  const [showImageSettings, setShowImageSettings] = useState(false);
+  const [imageOpacity, setImageOpacity] = useState(1);
 
   // Create ruler marks for horizontal and vertical rulers
   const horizontalRulerMarks = useMemo(() => {
@@ -371,8 +373,8 @@ const MissionMapBuilder = () => {
     const polygonPoints = pendingPoints.flatMap(p => [p.x, p.y]);
 
     const polygon = new fabric.Polygon(pendingPoints, {
-      fill: type === "attacker" ? "rgba(220, 50, 50, 0.6)" : 
-           type === "defender" ? "rgba(50, 200, 50, 0.6)" :
+      fill: type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
+           type === "defender" ? "rgba(72, 94, 82, 0.8)" :
            "rgba(230, 126, 34, 0.3)", // Orange for danger zone
       stroke: '',
       strokeWidth: 0,
@@ -397,18 +399,21 @@ const MissionMapBuilder = () => {
         obj.bringToFront();
       }
     });
-    
-    setPendingPoints(null);
+
+    // Reset drawing state and cursor
     setIsDrawing(false);
     setPoints([]);
-    setTempMarkers([]);
-    setTempLines([]);
+    setPendingPoints([]);
+    canvas.selection = true;
+    canvas.defaultCursor = 'default';
+    canvas.hoverCursor = 'move';
     
-    // Remove temporary markers and lines
+    // Clear temporary markers and lines
     tempMarkers.forEach(marker => canvas.remove(marker));
     tempLines.forEach(line => canvas.remove(line));
     setTempMarkers([]);
     setTempLines([]);
+    canvas.renderAll();
   };
 
   const addDeploymentZone = (type) => {
@@ -420,8 +425,8 @@ const MissionMapBuilder = () => {
       top: CANVAS_HEIGHT / 2,
       width: width,
       height: height,
-      fill: type === "attacker" ? "rgba(220, 50, 50, 0.6)" : 
-            type === "defender" ? "rgba(50, 200, 50, 0.6)" :
+      fill: type === "attacker" ? "rgba(139, 52, 43, 0.8)" : 
+            type === "defender" ? "rgba(72, 94, 82, 0.8)" :
             "rgba(230, 126, 34, 0.3)", // Orange for danger zone
       stroke: '',
       strokeWidth: 0,
@@ -436,122 +441,25 @@ const MissionMapBuilder = () => {
   };
 
   const addCustomZone = () => {
-    setShowColorPicker(true);
+    setShowZoneDialog(true);
   };
 
-  const handleColorChange = (color) => {
-    setCustomZoneColor(color.hex);
-  };
-
-  const handleOpacityChange = (value) => {
-    setCustomZoneOpacity(value);
-  };
-
-  const handleCreateCustomZone = () => {
-    const width = 12 * INCH_TO_PIXEL_RATIO;
-    const height = 6 * INCH_TO_PIXEL_RATIO;
+  const updateSelectedImageProperties = () => {
+    if (!selectedObject || !selectedObject.name?.includes('unit')) return;
     
-    const rect = new fabric.Rect({
-      left: CANVAS_WIDTH / 2,
-      top: CANVAS_HEIGHT / 2,
-      width: width,
-      height: height,
-      fill: `rgba(${parseInt(customZoneColor.slice(1, 3), 16)}, ${parseInt(customZoneColor.slice(3, 5), 16)}, ${parseInt(customZoneColor.slice(5, 7), 16)}, ${customZoneOpacity})`,
-      stroke: '',
-      strokeWidth: 0,
-      originX: 'center',
-      originY: 'center',
-      name: 'custom_zone'
+    selectedObject.set({
+      opacity: imageOpacity
     });
-
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
+    
     canvas.renderAll();
-    setShowColorPicker(false);
   };
 
-  const createZoneWithColor = (color, opacity) => {
-    const width = 12 * INCH_TO_PIXEL_RATIO;
-    const height = 6 * INCH_TO_PIXEL_RATIO;
-    
-    // Convert hex color to rgba
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    const zoneColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    
-    const rect = new fabric.Rect({
-      left: CANVAS_WIDTH / 2,
-      top: CANVAS_HEIGHT / 2,
-      width: width,
-      height: height,
-      fill: zoneColor,
-      stroke: '',
-      strokeWidth: 0,
-      originX: 'center',
-      originY: 'center',
-      name: 'custom_zone'
-    });
-
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
-    canvas.renderAll();
-    setShowColorPicker(false);
-  };
-
-  const createCustomZone = () => {
-    setShowColorPicker(true);
-  };
-
-  const createCustomZoneWithColor = (color, opacity) => {
-    if (!canvas || !pendingPoints || pendingPoints.length < 3) return;
-    
-    const polygonPoints = pendingPoints.flatMap(p => [p.x, p.y]);
-
-    // Convert hex color to rgba
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    const zoneColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    
-    const polygon = new fabric.Polygon(pendingPoints, {
-      fill: zoneColor,
-      stroke: '',
-      strokeWidth: 0,
-      selectable: true,
-      hasControls: true,
-      hasBorders: true,
-      name: 'custom_zone',
-      opacity: 1,
-      evented: true
-    });
-
-    canvas.add(polygon);
-    canvas.setActiveObject(polygon);
-    canvas.renderAll();
-    
-    // Move all measurement lines and objectives to front
-    canvas.getObjects().forEach(obj => {
-      if (obj.name && (
-          obj.name.includes('measurement') || 
-          obj.name.includes('objective') || 
-          obj.name === 'center_marker')) {
-        obj.bringToFront();
-      }
-    });
-    
-    setPendingPoints(null);
-    setIsDrawing(false);
-    setPoints([]);
-    setTempMarkers([]);
-    setTempLines([]);
-    
-    // Remove temporary markers and lines
-    tempMarkers.forEach(marker => canvas.remove(marker));
-    tempLines.forEach(line => canvas.remove(line));
-    setTempMarkers([]);
-    setTempLines([]);
-    setShowColorPicker(false);
+  const handleImageOpacityChange = (value) => {
+    setImageOpacity(value);
+    if (selectedObject && selectedObject.name?.includes('unit')) {
+      selectedObject.set({ opacity: value });
+      canvas.renderAll();
+    }
   };
 
   const addObjectiveMarker = () => {
@@ -605,22 +513,68 @@ const MissionMapBuilder = () => {
     });
   };
 
+  const addUnitImage = (type) => {
+    if (!canvas) return;
+    
+    const iconSrc = type === 'attacker' ? attackerIcon : defenderIcon;
+    
+    fabric.loadSVGFromURL(iconSrc, function(objects, options) {
+      const svg = fabric.util.groupSVGElements(objects, options);
+      
+      svg.set({
+        left: CANVAS_WIDTH / 2,
+        top: CANVAS_HEIGHT / 2,
+        originX: 'center',
+        originY: 'center',
+        name: `${type}_unit`
+      });
+
+      canvas.add(svg);
+      canvas.setActiveObject(svg);
+      setSelectedObject(svg);
+      setShowImageSettings(true);
+      canvas.renderAll();
+    });
+  };
+
+  const handleObjectSelected = (e) => {
+    const obj = e.selected[0];
+    setSelectedObject(obj);
+    
+    if (obj?.name?.includes('unit')) {
+      setImageOpacity(obj.opacity);
+    }
+  };
+
+  useEffect(() => {
+    if (!canvas) return;
+    
+    canvas.on('selection:created', handleObjectSelected);
+    canvas.on('selection:updated', handleObjectSelected);
+    canvas.on('selection:cleared', () => setSelectedObject(null));
+    
+    return () => {
+      canvas.off('selection:created', handleObjectSelected);
+      canvas.off('selection:updated', handleObjectSelected);
+      canvas.off('selection:cleared');
+    };
+  }, [canvas]);
+
   const addMeasurementLine = (isVertical = false) => {
     if (!canvas) return;
 
     const line = new fabric.Line(
       isVertical ? [50, 50, 50, 150] : [50, 50, 150, 50],
       {
-        stroke: '#0000FF',
+        stroke: "#000000",
         strokeWidth: 2,
-        strokeDashArray: [8, 4],
         name: 'measurement_line',
         selectable: true,
         hasControls: true,
         hasBorders: true,
         padding: 10,
         cornerSize: 8,
-        cornerColor: '#0000FF',
+        cornerColor: '#000000',
         cornerStyle: 'circle',
         transparentCorners: false,
         hasRotatingPoint: false,
@@ -637,7 +591,7 @@ const MissionMapBuilder = () => {
     const startArrow = new fabric.Triangle({
       width: arrowSize,
       height: arrowSize,
-      fill: '#0000FF',
+      fill: '#000000',
       left: line.get('x1'),
       top: line.get('y1'),
       angle: isVertical ? 0 : 270,
@@ -650,7 +604,7 @@ const MissionMapBuilder = () => {
     const endArrow = new fabric.Triangle({
       width: arrowSize,
       height: arrowSize,
-      fill: '#0000FF',
+      fill: '#000000',
       left: line.get('x2'),
       top: line.get('y2'),
       angle: isVertical ? 180 : 90,
@@ -703,7 +657,7 @@ const MissionMapBuilder = () => {
       fontSize: 16,
       fontFamily: 'Arial',
       fontWeight: 'bold',
-      fill: '#0000FF',
+      fill: '#000000',
       backgroundColor: 'rgba(255,255,255,0.9)',
       name: 'measurement_text',
       selectable: true,
@@ -812,23 +766,21 @@ const MissionMapBuilder = () => {
 
   const handleZoneTypeSelection = (type) => {
     if (type === 'custom') {
-      setShowColorPicker(true);
+      setShowZoneDialog(true);
     } else {
       createZone(type);
     }
     setShowZoneDialog(false);  // Explicitly close the zone dialog
   };
 
-  const handleCustomZoneConfirm = () => {
-    createCustomZoneWithColor(customZoneColor, customZoneOpacity);
-    setShowColorPicker(false);
-    setShowZoneDialog(false);  // Explicitly close the zone dialog
-  };
+  useEffect(() => {
+    if (selectedObject?.name?.includes('unit')) {
+      updateSelectedImageProperties();
+    }
+  }, [imageOpacity]);
 
   return (
     <div>
-      <h2>Warhammer 40K Mission Map Designer</h2>
-      
       <div className="button-groups-container" style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
         <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Map Editor</div>
@@ -837,6 +789,8 @@ const MissionMapBuilder = () => {
             <button onClick={() => addDeploymentZone("defender")} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Defender Zone</button>
             <button onClick={addObjectiveMarker} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Objective</button>
             <button onClick={addStrikeForceMarker} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Strike Force</button>
+            <button onClick={() => addUnitImage("attacker")} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Attacker Logo</button>
+            <button onClick={() => addUnitImage("defender")} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Defender Logo</button>
           </div>
           <button onClick={addCustomZone} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Add Custom Zone</button>
           <button 
@@ -867,51 +821,50 @@ const MissionMapBuilder = () => {
         </div>
 
         <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Measurements</div>
-          <button onClick={() => addMeasurementLine(false)} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Horizontal</button>
-          <button onClick={() => addMeasurementLine(true)} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Vertical</button>
-        </div>
-
-        <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Options</div>
+          <div className="button-group-title" style={{ textAlign: 'center', padding: '5px', backgroundColor: '#2c2c2c', borderRadius: '5px' }}>Tools</div>
+          <button onClick={() => addMeasurementLine(false)} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Measure Width</button>
+          <button onClick={() => addMeasurementLine(true)} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Measure Height</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+            <button 
+              onClick={addTextToZone}
+              disabled={!selectedObject || !selectedObject.name?.includes('zone') || (selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))}
+              style={{ 
+                padding: '8px', 
+                backgroundColor: '#3c3c3c', 
+                border: 'none', 
+                color: 'white', 
+                borderRadius: '5px', 
+                cursor: (selectedObject && selectedObject.name?.includes('zone') && !(selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))) ? 'pointer' : 'not-allowed',
+                opacity: (selectedObject && selectedObject.name?.includes('zone') && !(selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))) ? 1 : 0.5,
+                fontSize: '12px'
+              }}
+            >
+              Add Text
+            </button>
+            <button 
+              onClick={editZoneText}
+              disabled={!selectedObject || selectedObject.type !== 'group' || !selectedObject.getObjects().some(obj => obj.name === 'zone_text')}
+              style={{ 
+                padding: '8px', 
+                backgroundColor: '#3c3c3c', 
+                border: 'none', 
+                color: 'white', 
+                borderRadius: '5px', 
+                cursor: (selectedObject && selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text')) ? 'pointer' : 'not-allowed',
+                opacity: (selectedObject && selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text')) ? 1 : 0.5,
+                fontSize: '12px'
+              }}
+            >
+              Edit Text
+            </button>
+          </div>
+          <div style={{ height: '1px', backgroundColor: '#444444', margin: '5px 0' }}></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
             <button onClick={groupSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Group</button>
             <button onClick={ungroupSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Ungroup</button>
             <button onClick={duplicateSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Duplicate</button>
             <button onClick={deleteSelected} style={{ padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
           </div>
-          <button 
-            onClick={addTextToZone}
-            disabled={!selectedObject || !selectedObject.name?.includes('zone') || (selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))}
-            style={{ 
-              width: '100%', 
-              padding: '8px', 
-              backgroundColor: '#3c3c3c', 
-              border: 'none', 
-              color: 'white', 
-              borderRadius: '5px', 
-              cursor: (selectedObject && selectedObject.name?.includes('zone') && !(selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))) ? 'pointer' : 'not-allowed',
-              opacity: (selectedObject && selectedObject.name?.includes('zone') && !(selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text'))) ? 1 : 0.5
-            }}
-          >
-            Add Text
-          </button>
-          <button 
-            onClick={editZoneText}
-            disabled={!selectedObject || selectedObject.type !== 'group' || !selectedObject.getObjects().some(obj => obj.name === 'zone_text')}
-            style={{ 
-              width: '100%', 
-              padding: '8px', 
-              backgroundColor: '#3c3c3c', 
-              border: 'none', 
-              color: 'white', 
-              borderRadius: '5px', 
-              cursor: (selectedObject && selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text')) ? 'pointer' : 'not-allowed',
-              opacity: (selectedObject && selectedObject.type === 'group' && selectedObject.getObjects().some(obj => obj.name === 'zone_text')) ? 1 : 0.5
-            }}
-          >
-            Edit Text
-          </button>
         </div>
 
         <div className="button-group" style={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -926,6 +879,114 @@ const MissionMapBuilder = () => {
           <button onClick={loadMap} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Load</button>
           <button onClick={exportAsPNG} style={{ width: '100%', padding: '8px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>Export</button>
         </div>
+
+        {showImageSettings && selectedObject && selectedObject.name?.includes('unit') && (
+          <div style={{
+            position: 'fixed',
+            top: '40%',
+            right: '8px',
+            transform: 'translateY(-50%)',
+            backgroundColor: '#2c2c2c',
+            padding: '10px',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+            zIndex: 1000,
+            color: 'white',
+            fontSize: '12px',
+            width: '170px'
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Logo Settings</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <label style={{ marginBottom: '4px', display: 'block', fontSize: '12px' }}>Opacity:</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.1"
+                    value={imageOpacity}
+                    onChange={(e) => handleImageOpacityChange(parseFloat(e.target.value))}
+                    style={{ width: '90px' }}
+                  />
+                  <span style={{ fontSize: '11px', minWidth: '24px' }}>{imageOpacity.toFixed(1)}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '10px' }}>
+              <button 
+                onClick={() => setShowImageSettings(false)}
+                style={{ 
+                  padding: '5px 10px',
+                  backgroundColor: '#2ecc71',
+                  border: 'none',
+                  color: 'white',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                OK
+              </button>
+              <button 
+                onClick={() => {
+                  setShowImageSettings(false);
+                  // Reset to previous values
+                  if (selectedObject) {
+                    selectedObject.set({
+                      opacity: imageOpacity
+                    });
+                    canvas.renderAll();
+                  }
+                }}
+                style={{ 
+                  padding: '5px 10px',
+                  backgroundColor: '#e74c3c',
+                  border: 'none',
+                  color: 'white',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showZoneDialog && (
+          <div className="zone-dialog" style={{
+            position: 'fixed',
+            top: '40%',
+            right: '8px',
+            transform: 'translateY(-50%)',
+            backgroundColor: '#2c2c2c',
+            padding: '10px',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+            zIndex: 1000,
+            color: 'white',
+            width: '130px'
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Zone Type</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <button onClick={() => handleZoneTypeSelection("attacker")} style={{ padding: '5px', backgroundColor: '#e74c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Attacker</button>
+              <button onClick={() => handleZoneTypeSelection("defender")} style={{ padding: '5px', backgroundColor: '#1abc9c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Defender</button>
+              <button onClick={() => handleZoneTypeSelection("custom")} style={{ padding: '5px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Custom</button>
+              <button onClick={() => {
+                setPendingPoints(null);
+                setIsDrawing(false);
+                setShowZoneDialog(false);
+                tempMarkers.forEach(marker => canvas.remove(marker));
+                tempLines.forEach(line => canvas.remove(line));
+                setTempMarkers([]);
+                setTempLines([]);
+                setPoints([]);
+              }} style={{ padding: '5px', backgroundColor: '#7f8c8d', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="canvas-container" style={{ 
@@ -1022,146 +1083,6 @@ const MissionMapBuilder = () => {
         {isDrawing && (
           <div className="drawing-tooltip">
             Drawing mode: Click to place points, click near the start point to finish
-          </div>
-        )}
-
-        {showZoneDialog && (
-          <div className="zone-dialog" style={{
-            position: 'fixed',
-            top: '40%',
-            right: '8px',
-            transform: 'translateY(-50%)',
-            backgroundColor: '#2c2c2c',
-            padding: '10px',
-            borderRadius: '6px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-            zIndex: 1000,
-            color: 'white',
-            width: '130px'
-          }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Zone Type</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <button onClick={() => handleZoneTypeSelection("attacker")} style={{ padding: '5px', backgroundColor: '#e74c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Attacker</button>
-              <button onClick={() => handleZoneTypeSelection("defender")} style={{ padding: '5px', backgroundColor: '#1abc9c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Defender</button>
-              <button onClick={() => handleZoneTypeSelection("custom")} style={{ padding: '5px', backgroundColor: '#3c3c3c', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Custom</button>
-              <button onClick={() => {
-                setPendingPoints(null);
-                setIsDrawing(false);
-                setShowZoneDialog(false);
-                tempMarkers.forEach(marker => canvas.remove(marker));
-                tempLines.forEach(line => canvas.remove(line));
-                setTempMarkers([]);
-                setTempLines([]);
-                setPoints([]);
-              }} style={{ padding: '5px', backgroundColor: '#7f8c8d', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {showColorPicker && (
-          <div style={{
-            position: 'fixed',
-            top: '40%',
-            right: '8px',
-            transform: 'translateY(-50%)',
-            backgroundColor: '#2c2c2c',
-            padding: '10px',
-            borderRadius: '6px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-            zIndex: 1000,
-            color: 'white',
-            fontSize: '12px',
-            width: '170px'
-          }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '13px', textAlign: 'center' }}>Zone Color</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div>
-                <label style={{ marginBottom: '4px', display: 'block', fontSize: '12px' }}>Color:</label>
-                <ChromePicker 
-                  color={customZoneColor}
-                  onChange={(color) => handleColorChange(color)}
-                  styles={{
-                    default: {
-                      picker: {
-                        width: '150px',
-                        padding: '5px',
-                        boxSizing: 'border-box'
-                      }
-                    }
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ marginBottom: '4px', display: 'block', fontSize: '12px' }}>Opacity:</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="1" 
-                    step="0.1"
-                    value={customZoneOpacity}
-                    onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
-                    style={{ width: '90px' }}
-                  />
-                  <span style={{ fontSize: '11px', minWidth: '24px' }}>{customZoneOpacity.toFixed(1)}</span>
-                </div>
-              </div>
-            </div>
-            <div style={{ 
-              margin: '8px 0',
-              padding: '4px',
-              backgroundColor: customZoneColor,
-              opacity: customZoneOpacity,
-              borderRadius: '4px',
-              textAlign: 'center',
-              color: 'white',
-              textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-              fontSize: '11px'
-            }}>
-              Preview
-            </div>
-            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-              <button 
-                onClick={handleCreateCustomZone}
-                style={{ 
-                  padding: '5px 10px',
-                  backgroundColor: '#2ecc71',
-                  border: 'none',
-                  color: 'white',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                OK
-              </button>
-              <button 
-                onClick={() => {
-                  setShowColorPicker(false);
-                  setShowZoneDialog(false);
-                  if (pendingPoints) {
-                    setPendingPoints(null);
-                    setIsDrawing(false);
-                    tempMarkers.forEach(marker => canvas.remove(marker));
-                    tempLines.forEach(line => canvas.remove(line));
-                    setTempMarkers([]);
-                    setTempLines([]);
-                    setPoints([]);
-                  }
-                }}
-                style={{ 
-                  padding: '5px 10px',
-                  backgroundColor: '#e74c3c',
-                  border: 'none',
-                  color: 'white',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
           </div>
         )}
       </div>
