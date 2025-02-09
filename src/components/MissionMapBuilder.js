@@ -5,6 +5,19 @@ import strikeObjectiveIcon from '../assets/StrikeObj.svg';
 import attackerIcon from '../assets/Attacker.svg';
 import defenderIcon from '../assets/Defender.svg';
 
+// Preload images to ensure they're available when needed
+const preloadImages = () => {
+  const images = [objectiveIcon, strikeObjectiveIcon, attackerIcon, defenderIcon];
+  return Promise.all(images.map(src => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }));
+};
+
 const INCH_TO_PIXEL_RATIO = 20;
 const CANVAS_WIDTH = 60 * INCH_TO_PIXEL_RATIO;
 const CANVAS_HEIGHT = 44 * INCH_TO_PIXEL_RATIO;
