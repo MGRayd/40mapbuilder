@@ -95,8 +95,8 @@ const MissionMapBuilder = () => {
     // Draw grid
     for (let i = 0; i <= CANVAS_WIDTH; i += GRID_SIZE) {
       newCanvas.add(new fabric.Line([i, 0, i, CANVAS_HEIGHT], {
-        stroke: "#666666",
-        strokeWidth: 0.5,
+        stroke: "#333333",
+        strokeWidth: i % MAJOR_GRID_SIZE === 0 ? 1 : 0.5,
         selectable: false,
         evented: false,
         hoverCursor: 'default',
@@ -105,8 +105,8 @@ const MissionMapBuilder = () => {
     }
     for (let i = 0; i <= CANVAS_HEIGHT; i += GRID_SIZE) {
       newCanvas.add(new fabric.Line([0, i, CANVAS_WIDTH, i], {
-        stroke: "#666666",
-        strokeWidth: 0.5,
+        stroke: "#333333",
+        strokeWidth: i % MAJOR_GRID_SIZE === 0 ? 1 : 0.5,
         selectable: false,
         evented: false,
         hoverCursor: 'default',
