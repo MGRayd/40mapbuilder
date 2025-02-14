@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/40mapbuilder/static/css/main.e642cbad.css",
-    "main.js": "/40mapbuilder/static/js/main.ea796a97.js",
+    "main.js": "/40mapbuilder/static/js/main.bdd81dc6.js",
     "static/media/Objective.svg": "/40mapbuilder/static/media/Objective.6031dfcb2bbf9490022aeb44af77e714.svg",
     "static/media/StrikeObj.svg": "/40mapbuilder/static/media/StrikeObj.aa87f6e97a3e2cdb46e594429b236ffa.svg",
     "static/media/Attacker.svg": "/40mapbuilder/static/media/Attacker.317f42f6942d84551ccdac9e728cd07c.svg",
     "static/media/Defender.svg": "/40mapbuilder/static/media/Defender.a55c2acebed75ebe2fa0adc51e3c25ef.svg",
     "index.html": "/40mapbuilder/index.html",
     "main.e642cbad.css.map": "/40mapbuilder/static/css/main.e642cbad.css.map",
-    "main.ea796a97.js.map": "/40mapbuilder/static/js/main.ea796a97.js.map"
+    "main.bdd81dc6.js.map": "/40mapbuilder/static/js/main.bdd81dc6.js.map"
   },
   "entrypoints": [
     "static/css/main.e642cbad.css",
-    "static/js/main.ea796a97.js"
+    "static/js/main.bdd81dc6.js"
   ]
 }
