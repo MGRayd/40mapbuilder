@@ -441,7 +441,7 @@ const MissionMapBuilder = () => {
   };
 
   const updateSelectedImageProperties = () => {
-    if (!selectedObject || !selectedObject.name?.includes('unit')) return;
+    if (!canvas || !selectedObject || !selectedObject.name?.includes('unit')) return;
     
     selectedObject.set({
       opacity: imageOpacity
@@ -973,6 +973,25 @@ const MissionMapBuilder = () => {
     canvas.add(rect);
     canvas.setActiveObject(rect);
     canvas.renderAll();
+  };
+
+  // Add storage error handling
+  const saveToLocalStorage = (key, value) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.warn('Unable to save to local storage:', error);
+    }
+  };
+
+  const loadFromLocalStorage = (key, defaultValue) => {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+      console.warn('Unable to load from local storage:', error);
+      return defaultValue;
+    }
   };
 
   return (
